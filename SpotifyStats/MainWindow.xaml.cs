@@ -30,12 +30,13 @@ namespace SpotifyStats {
         public string SongName { get; set; }
 
         public override string ToString() {
-            return ArtistName + " – " + SongName;
+            return ArtistName + " " + MainWindow.SONG_SEPARATOR + " " + SongName;
         }
     }
 
-    internal class SongContext: DbContext {
-        public SongContext(string connectionString): base(connectionString) {
+    internal class SongContext : DbContext {
+        public SongContext(string connectionString)
+            : base(connectionString) {
         }
 
         public DbSet<Song> Songs { get; set; }
@@ -45,13 +46,15 @@ namespace SpotifyStats {
     /// <summary>
     ///     Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow: Window {
+    public partial class MainWindow : Window {
         private const string DATABASE_NAME = "stats.db";
-        private const char SONG_SEPARATOR = '–';
+        public const char SONG_SEPARATOR = '–';
         private readonly SongContext dataContext;
         private readonly List<Song> newSongs;
         private readonly int refreshInterval;
+        private bool currentlyUpdating;
         private int spotifyProcessId;
+        private readonly Action getSong;
 
         public MainWindow() {
             InitializeComponent();
@@ -61,9 +64,8 @@ namespace SpotifyStats {
 
             var spotifyId = findSpotifyProcessId();
             if (!spotifyId.HasValue) {
-                // TODO NotifyArea or whatever
-            }
-            else {
+                statusText.Text = "Spotify not running/not playing a song.";
+            } else {
                 spotifyProcessId = spotifyId.Value;
             }
             if (File.Exists(DATABASE_NAME)) {
@@ -71,14 +73,40 @@ namespace SpotifyStats {
                 // Load database
                 dataContext = new SongContext(DATABASE_NAME);
                 Debug.WriteLine("loading existing database");
-            }
-            else {
+            } else {
                 // Create new database, then load it
                 SQLiteConnection.CreateFile(DATABASE_NAME);
                 dataContext = new SongContext(DATABASE_NAME);
                 Debug.WriteLine("creating new database");
             }
             dataGrid.ItemsSource = newSongs;
+            currentlyUpdating = true;
+
+            getSong = () => {
+                try {
+                    var result = Process.GetProcessById(spotifyProcessId);
+                    var song = result.MainWindowTitle.Substring(10);
+                    var lastSong = newSongs.LastOrDefault();
+                    if (lastSong == null || lastSong.ToString() != song) {
+                        var s = parseSong(result);
+                        persistSong(s);
+                    }
+                    // If GetProcessById fails, try to find the Spotify process, try to find it again.
+                } catch (ArgumentException) {
+                    var id = findSpotifyProcessId();
+                    if (id.HasValue) {
+                        spotifyProcessId = id.Value;
+                        statusText.Text = "";
+
+                        var result = Process.GetProcessById(spotifyProcessId);
+                        var s = parseSong(result);
+                        persistSong(s);
+                    } else {
+                        statusText.Text = "Spotify not running/not playing a song.";
+                    }
+                }
+            };
+
         }
 
         private static int? findSpotifyProcessId() {
@@ -97,39 +125,41 @@ namespace SpotifyStats {
                 var task = Task.Delay(interval, cancellationToken);
                 try {
                     await task;
-                }
-                catch (TaskCanceledException) {
+                } catch (TaskCanceledException) {
                     return;
                 }
             }
         }
 
+        private static Song parseSong(Process process) {
+            var song = process.MainWindowTitle.Substring(10);
+            var split = song.Split(SONG_SEPARATOR);
+            var artist = split[0].Trim();
+            var songName = split[1].Trim();
+            return new Song(artist, songName);
+        }
+
+        private void persistSong(Song s) {
+            newSongs.Add(s);
+            dataGrid.Items.Refresh();
+            dataContext.Songs.Add(s);
+            dataContext.SaveChanges();
+        }
+
         private async void MainWindow_OnContentRendered(object sender, EventArgs e) {
-            Action getSong = () => {
-                try {
-                    var result = Process.GetProcessById(spotifyProcessId);
-                    var song = result.MainWindowTitle.Substring(10);
-                    var lastSong = newSongs.LastOrDefault();
-                    if (lastSong == null || lastSong.ToString() != song) {
-                        var split = song.Split(SONG_SEPARATOR);
-                        var artist = split[0].Trim();
-                        var songName = split[1].Trim();
-                        var s = new Song(artist, songName);
-                        newSongs.Add(s);
-                        dataGrid.Items.Refresh();
-                        dataContext.Songs.Add(s);
-                        dataContext.SaveChanges();
-                    }
-                    // If GetProcessById fails, try to find the Spotify process, try to find it again.
-                }
-                catch (ArgumentException) {
-                    var id = findSpotifyProcessId();
-                    if (id.HasValue) {
-                        spotifyProcessId = id.Value;
-                    }
-                }
-            };
-            await RepeatActionEvery(getSong, TimeSpan.FromSeconds(refreshInterval), new CancellationToken());
+           await RepeatActionEvery(getSong, TimeSpan.FromSeconds(refreshInterval), new CancellationToken());
+        }
+
+        private async void UpdatingButton_Click(object sender, RoutedEventArgs e) {
+            if (currentlyUpdating) {
+                currentlyUpdating = false;
+                updatingButton.Content = "Start updating";
+            }
+            else {
+                currentlyUpdating = true;
+                updatingButton.Content = "Stop updating";
+                await RepeatActionEvery(getSong, TimeSpan.FromSeconds(refreshInterval), new CancellationToken());
+            }
         }
     }
 }
