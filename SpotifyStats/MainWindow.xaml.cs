@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Data;
 using System.Data.Entity;
 using System.Data.SQLite;
 using System.Diagnostics;
@@ -11,7 +10,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Forms;
 
 namespace SpotifyStats {
     [Table("Song")]
@@ -24,6 +22,7 @@ namespace SpotifyStats {
 
         public Song() {
         }
+
         [Key]
         public int Id { get; set; }
         public DateTime TimeStamp { get; set; }
@@ -36,11 +35,10 @@ namespace SpotifyStats {
     }
 
     internal class SongContext: DbContext {
-        public DbSet<Song> Songs { get; set; }
-
         public SongContext(string connectionString): base(connectionString) {
-
         }
+
+        public DbSet<Song> Songs { get; set; }
     }
 
 
@@ -48,12 +46,12 @@ namespace SpotifyStats {
     ///     Interaction logic for MainWindow.xaml
     /// </summary>
     public partial class MainWindow: Window {
-        private const string DATABASE_NAME = "Data Source=stats.db";
+        private const string DATABASE_NAME = "stats.db";
         private const char SONG_SEPARATOR = '–';
+        private readonly SongContext dataContext;
         private readonly List<Song> newSongs;
         private readonly int refreshInterval;
         private int spotifyProcessId;
-        private readonly SongContext dataContext;
 
         public MainWindow() {
             InitializeComponent();
@@ -69,15 +67,17 @@ namespace SpotifyStats {
                 spotifyProcessId = spotifyId.Value;
             }
             if (File.Exists(DATABASE_NAME)) {
+                Debug.WriteLine(Path.GetFullPath(DATABASE_NAME));
                 // Load database
                 dataContext = new SongContext(DATABASE_NAME);
+                Debug.WriteLine("loading existing database");
             }
             else {
                 // Create new database, then load it
                 SQLiteConnection.CreateFile(DATABASE_NAME);
                 dataContext = new SongContext(DATABASE_NAME);
+                Debug.WriteLine("creating new database");
             }
-
             dataGrid.ItemsSource = newSongs;
         }
 
@@ -117,7 +117,6 @@ namespace SpotifyStats {
                         var s = new Song(artist, songName);
                         newSongs.Add(s);
                         dataGrid.Items.Refresh();
-                        // HERE BE CRASHES
                         dataContext.Songs.Add(s);
                         dataContext.SaveChanges();
                     }

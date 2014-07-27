@@ -4,8 +4,9 @@
         xmlns:local="clr-namespace:SpotifyStats" xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
     x:Class="SpotifyStats.MainWindow"
-        Title="MainWindow" Height="523" Width="719" ContentRendered="MainWindow_OnContentRendered">
+        Title="MainWindow" Height="599" Width="719" ContentRendered="MainWindow_OnContentRendered">
     <Grid>
-        <DataGrid x:Name="dataGrid" Margin="10" AutoGenerateColumns="True" IsReadOnly="True"/>
+        <DataGrid x:Name="dataGrid" Margin="10,10,10,35" AutoGenerateColumns="True" IsReadOnly="True"/>
+        <StatusBar HorizontalAlignment="Left" Margin="10,538,0,10" Width="691"/>
     </Grid>
 </Window>
