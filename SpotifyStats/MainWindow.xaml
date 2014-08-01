@@ -4,14 +4,18 @@
         xmlns:local="clr-namespace:SpotifyStats" xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
     x:Class="SpotifyStats.MainWindow"
-        Title="MainWindow" Height="599" Width="719" ContentRendered="MainWindow_OnContentRendered">
+        Title="Spotify Stats" Height="599" Width="719" Loaded="MainWindow_Loaded">
     <Grid>
         <DataGrid x:Name="dataGrid" Margin="10,10,10,65" AutoGenerateColumns="True" IsReadOnly="True"/>
-        <StatusBar Margin="10,0,10,10" Name="statusBar" Height="25" VerticalAlignment="Bottom">
+        <StatusBar Margin="10,0,10,10" Height="25" VerticalAlignment="Bottom">
             <StatusBarItem>
                 <TextBlock Name="statusText"></TextBlock>
             </StatusBarItem>
         </StatusBar>
         <Button Name="updatingButton"  Content="Stop updating" HorizontalAlignment="Right" Margin="0,0,10,40" Width="93" Height="20" VerticalAlignment="Bottom" Click="UpdatingButton_Click"/>
+        <ComboBox x:Name="modeSelector" HorizontalAlignment="Left" Margin="10,0,0,38" Width="168" Height="22" VerticalAlignment="Bottom" SelectionChanged="ComboBox_SelectionChanged">
+            <ComboBoxItem Content="Recent songs" IsSelected="True"/>
+            <ComboBoxItem Content="Most played artists"/>
+        </ComboBox>
     </Grid>
 </Window>
